@@ -54,6 +54,15 @@ void show_cg_attr(const char *cg_path, const char *cg_attr, const char *cg_type)
         return;
     }
 
+    // cg_type (cgroup.controllers)) are the prefix word ending with a period.
+    if (cg_type != NULL) {
+        size_t type_len = strlen(cg_type);
+        if (strncmp(cg_attr, cg_type, type_len) != 0 || cg_attr[type_len] != '.') {
+            fclose(file);
+            return;
+        }
+    }
+
     // Print the setting name
     printf("%s: ", cg_attr);
 
@@ -168,4 +177,3 @@ void free_cg_list(char **cg_attr_list, int count) {
     }
     free(cg_attr_list);
 }
-
