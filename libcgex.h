@@ -7,6 +7,7 @@
 #include <string.h>
 #include <unistd.h>
 #include <dirent.h>
+#include <ctype.h>
 
 #define BUF_SIZE 256
 
