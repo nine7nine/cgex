@@ -2,7 +2,7 @@
 #include "libcgex.h"
 
 // Function to read the contents of a file
-char *read_file_contents(const char *file_path) {
+char *read_cg_attr(const char *file_path) {
     FILE *file = fopen(file_path, "r");
     if (file == NULL) {
         perror("fopen");
@@ -37,16 +37,15 @@ int compare_strings(const void *a, const void *b) {
 }
 
 // Function to read and print a specific setting in a CGroup
-void read_and_print_setting(const char *cgroup_path, const char *setting, const char *type) {
-    // Check if any of the input parameters are NULL
-    if (cgroup_path == NULL || setting == NULL) {
+void show_cg_attr(const char *cg_path, const char *cg_attr, const char *type) {
+    if (cg_path == NULL || cg_attr == NULL) {
         fprintf(stderr, "Error: NULL input parameter(s) detected\n");
         return;
     }
 
     // Construct the file path corresponding to the setting
     char file_path[BUF_SIZE];
-    snprintf(file_path, sizeof(file_path), "%s/%s", cgroup_path, setting);
+    snprintf(file_path, sizeof(file_path), "%s/%s", cg_path, cg_attr);
 
     // Open the file for reading
     FILE *file = fopen(file_path, "r");
@@ -56,10 +55,10 @@ void read_and_print_setting(const char *cgroup_path, const char *setting, const 
     }
 
     // Print the setting name
-    printf("%s: ", setting);
+    printf("%s: ", cg_attr);
 
     // If the setting is cgroup.threads, process the PIDs
-    if (strcmp(setting, "cgroup.threads") == 0) {
+    if (strcmp(cg_attr, "cgroup.threads") == 0) {
         char *line = NULL;
         size_t len = 0;
         ssize_t read;
@@ -94,7 +93,7 @@ void read_and_print_setting(const char *cgroup_path, const char *setting, const 
         }
     } else {
         // Read the content of the setting file
-        char *content = read_file_contents(file_path);
+        char *content = read_cg_attr(file_path);
         if (content != NULL) {
             printf("%s", content);
             free(content);
@@ -106,15 +105,14 @@ void read_and_print_setting(const char *cgroup_path, const char *setting, const 
 }
 
 // Function to set a value for a setting in a CGroup
-void set_cgroup_setting(const char *cgroup_path, const char *setting, const char *value) {
-    // Check if any of the input parameters are NULL
-    if (cgroup_path == NULL || setting == NULL || value == NULL) {
+void set_cg_attr(const char *cg_path, const char *cg_attr, const char *value) {
+    if (cg_path == NULL || cg_attr == NULL || value == NULL) {
         fprintf(stderr, "Error: NULL input parameter(s) detected\n");
         return;
     }
 
     char file_path[BUF_SIZE];
-    snprintf(file_path, sizeof(file_path), "%s/%s", cgroup_path, setting);
+    snprintf(file_path, sizeof(file_path), "%s/%s", cg_path, cg_attr);
 
     FILE *file = fopen(file_path, "w");
     if (file == NULL) {
@@ -125,19 +123,19 @@ void set_cgroup_setting(const char *cgroup_path, const char *setting, const char
     fprintf(file, "%s\n", value);
     fclose(file);
 
-    printf("Updated %s: %s\n", setting, value);
+    printf("Updated %s: %s\n", cg_attr, value);
 }
 
 // Function to get a list of settings in a CGroup
-char **get_settings_list(const char *cgroup_path, int *count) {
-    DIR *dir = opendir(cgroup_path);
+char **get_cg_list(const char *cg_path, int *count) {
+    DIR *dir = opendir(cg_path);
     if (dir == NULL) {
         perror("opendir");
         return NULL;
     }
 
-    char **settings_list = (char **)malloc(BUF_SIZE * sizeof(char *));
-    if (settings_list == NULL) {
+    char **cg_attr_list = (char **)malloc(BUF_SIZE * sizeof(char *));
+    if (cg_attr_list == NULL) {
         perror("malloc");
         closedir(dir);
         return NULL;
@@ -148,27 +146,26 @@ char **get_settings_list(const char *cgroup_path, int *count) {
     struct dirent *entry;
     while ((entry = readdir(dir)) != NULL) {
         if (strcmp(entry->d_name, ".") != 0 && strcmp(entry->d_name, "..") != 0) {
-            settings_list[(*count)++] = strdup(entry->d_name);
+            cg_attr_list[(*count)++] = strdup(entry->d_name);
         }
     }
     closedir(dir);
 
-    // Sort the settings alphabetically
-    qsort(settings_list, *count, sizeof(char *), compare_strings);
+    qsort(cg_attr_list, *count, sizeof(char *), compare_strings);
 
-    return settings_list;
+    return cg_attr_list;
 }
 
 // Function to free memory allocated by settings list
-void free_settings_list(char **settings_list, int count) {
-    if (settings_list == NULL) {
+void free_cg_list(char **cg_attr_list, int count) {
+    if (cg_attr_list == NULL) {
         return;
     }
     for (int i = 0; i < count; i++) {
-        if (settings_list[i] != NULL) {
-            free(settings_list[i]);
+        if (cg_attr_list[i] != NULL) {
+            free(cg_attr_list[i]);
         }
     }
-    free(settings_list);
+    free(cg_attr_list);
 }
 
