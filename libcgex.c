@@ -38,6 +38,12 @@ int compare_strings(const void *a, const void *b) {
 
 // Function to read and print a specific setting in a CGroup
 void read_and_print_setting(const char *cgroup_path, const char *setting, const char *type) {
+    // Check if any of the input parameters are NULL
+    if (cgroup_path == NULL || setting == NULL) {
+        fprintf(stderr, "Error: NULL input parameter(s) detected\n");
+        return;
+    }
+
     // Construct the file path corresponding to the setting
     char file_path[BUF_SIZE];
     snprintf(file_path, sizeof(file_path), "%s/%s", cgroup_path, setting);
@@ -101,6 +107,12 @@ void read_and_print_setting(const char *cgroup_path, const char *setting, const 
 
 // Function to set a value for a setting in a CGroup
 void set_cgroup_setting(const char *cgroup_path, const char *setting, const char *value) {
+    // Check if any of the input parameters are NULL
+    if (cgroup_path == NULL || setting == NULL || value == NULL) {
+        fprintf(stderr, "Error: NULL input parameter(s) detected\n");
+        return;
+    }
+
     char file_path[BUF_SIZE];
     snprintf(file_path, sizeof(file_path), "%s/%s", cgroup_path, setting);
 
