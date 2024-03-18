@@ -99,6 +99,13 @@ void set_cgroup_setting(const char *cgroup_path, const char *setting, const char
     printf("Updated %s: %s\n", setting, value);
 }
 
+// Function to compare strings for sorting
+int compare_strings(const void *a, const void *b) {
+    const char **str1 = (const char **)a;
+    const char **str2 = (const char **)b;
+    return strcmp(*str1, *str2);
+}
+
 // Function to get a list of settings in a CGroup
 char **get_settings_list(const char *cgroup_path, int *count) {
     DIR *dir = opendir(cgroup_path);
@@ -123,6 +130,9 @@ char **get_settings_list(const char *cgroup_path, int *count) {
         }
     }
     closedir(dir);
+
+    // Sort the settings alphabetically
+    qsort(settings_list, *count, sizeof(char *), compare_strings);
 
     return settings_list;
 }
