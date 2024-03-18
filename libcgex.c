@@ -9,14 +9,31 @@ char *read_file_contents(const char *file_path) {
         return NULL;
     }
 
-    static char buffer[BUF_SIZE];
-    if (fgets(buffer, sizeof(buffer), file) == NULL) {
-        fclose(file);
+    // Dynamically allocate memory for file contents
+    char *buffer = NULL;
+    size_t bufsize = 0;
+    ssize_t characters_read = getline(&buffer, &bufsize, file);
+    fclose(file);
+
+    // Check if getline encountered an error or if the value is empty
+    if (characters_read == -1 || (characters_read == 1 && buffer[0] == '\n')) {
+        free(buffer);
         return NULL;
     }
 
-    fclose(file);
+    // Remove trailing newline character
+    if (buffer[characters_read - 1] == '\n') {
+        buffer[characters_read - 1] = '\0';
+    }
+
     return buffer;
+}
+
+// Function to compare strings for sorting
+int compare_strings(const void *a, const void *b) {
+    const char **str1 = (const char **)a;
+    const char **str2 = (const char **)b;
+    return strcmp(*str1, *str2);
 }
 
 // Function to read and print a specific setting in a CGroup
@@ -25,21 +42,18 @@ void read_and_print_setting(const char *cgroup_path, const char *setting, const 
     char file_path[BUF_SIZE];
     snprintf(file_path, sizeof(file_path), "%s/%s", cgroup_path, setting);
 
-    // Check if the setting matches the specified type prefix
-    if (type != NULL && strncmp(setting, type, strlen(type)) != 0) {
-        return; // Skip this setting if it doesn't match the specified type prefix
+    // Open the file for reading
+    FILE *file = fopen(file_path, "r");
+    if (file == NULL) {
+        perror("fopen");
+        return;
     }
+
+    // Print the setting name
+    printf("%s: ", setting);
 
     // If the setting is cgroup.threads, process the PIDs
     if (strcmp(setting, "cgroup.threads") == 0) {
-        // Read the content of the setting file
-        FILE *file = fopen(file_path, "r");
-        if (file == NULL) {
-            perror("fopen");
-            return;
-        }
-
-        printf("%s:\n", setting); // Print the setting name
         char *line = NULL;
         size_t len = 0;
         ssize_t read;
@@ -63,23 +77,26 @@ void read_and_print_setting(const char *cgroup_path, const char *setting, const 
                 char process_name[BUF_SIZE];
                 if (fscanf(stat_file, "%*d (%[^)])", process_name) == 1) {
                     // Print PID and process name
-                    printf("%d - %s\n", pid, process_name);
+                    printf("\n%d - %s", pid, process_name);
                 }
                 fclose(stat_file);
             }
         }
 
-        fclose(file);
         if (line) {
             free(line);
         }
     } else {
-        // For settings other than cgroup.threads, print the content as usual
+        // Read the content of the setting file
         char *content = read_file_contents(file_path);
         if (content != NULL) {
-            printf("%s: %s", setting, content); // Print setting name and content without newline
+            printf("%s", content);
+            free(content);
         }
     }
+
+    printf("\n");
+    fclose(file);
 }
 
 // Function to set a value for a setting in a CGroup
@@ -97,13 +114,6 @@ void set_cgroup_setting(const char *cgroup_path, const char *setting, const char
     fclose(file);
 
     printf("Updated %s: %s\n", setting, value);
-}
-
-// Function to compare strings for sorting
-int compare_strings(const void *a, const void *b) {
-    const char **str1 = (const char **)a;
-    const char **str2 = (const char **)b;
-    return strcmp(*str1, *str2);
 }
 
 // Function to get a list of settings in a CGroup
@@ -149,3 +159,4 @@ void free_settings_list(char **settings_list, int count) {
     }
     free(settings_list);
 }
+
