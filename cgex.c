@@ -1,12 +1,13 @@
 #include "libcgex.h"
 
-#define ERROR_USAGE "Usage: %s -g <cg_path> [-r <all|cg_attr> | -s <cg_attr> <cg_value> | -t <cg_type>]\n"
+#define ERROR_USAGE "Usage: %s -g <cg_group> [-r <all|cg_attr> | -s <cg_attr> <cg_value> | -t <cg_type>]\n"
 #define ERROR_RS_TOGETHER "Error: Cannot use -r and -s options together.\n"
 #define ERROR_MISSING_ARG "Error: Missing cg_attr or cg_value argument for -s option.\n"
 #define BUF_SIZE 256
+#define SYS_CGROUP_PATH "/sys/fs/cgroup"
 
 int main(int argc, char *argv[]) {
-    const char *cg_path = NULL;
+    const char *cg_group = NULL;
     const char *cg_opt = NULL;
     const char *cg_attr = NULL;
     const char *cg_type = NULL;
@@ -16,7 +17,7 @@ int main(int argc, char *argv[]) {
     while ((opt = getopt(argc, argv, "g:r:s:t:")) != -1) {
         switch (opt) {
             case 'g':
-                cg_path = optarg;
+                cg_group = optarg;
                 break;
             case 'r':
                 if (s_flag || t_flag) {
@@ -48,10 +49,14 @@ int main(int argc, char *argv[]) {
         }
     }
 
-    if (cg_path == NULL) {
+    if (cg_group == NULL) {
         fprintf(stderr, ERROR_USAGE, argv[0]);
         return EXIT_FAILURE;
     }
+
+    // Construct the full path of the cgroup
+    char cg_path[BUF_SIZE];
+    snprintf(cg_path, sizeof(cg_path), "%s/%s", SYS_CGROUP_PATH, cg_group);
 
     if (s_flag && (!cg_attr || optind >= argc)) {
         fprintf(stderr, ERROR_MISSING_ARG);
