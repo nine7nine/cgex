@@ -1,20 +1,15 @@
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
-#include <unistd.h>
-#include <dirent.h>
 #include "libcgex.h"
 
-#define ERROR_USAGE "Usage: %s -g <cg_path> [-r <all|cg_attr> | -s <cg_attr> <value> | -t <type>]\n"
+#define ERROR_USAGE "Usage: %s -g <cg_path> [-r <all|cg_attr> | -s <cg_attr> <cg_value> | -t <cg_type>]\n"
 #define ERROR_RS_TOGETHER "Error: Cannot use -r and -s options together.\n"
-#define ERROR_MISSING_ARG "Error: Missing cg_attr or value argument for -s option.\n"
+#define ERROR_MISSING_ARG "Error: Missing cg_attr or cg_value argument for -s option.\n"
 #define BUF_SIZE 256
 
 int main(int argc, char *argv[]) {
     const char *cg_path = NULL;
-    const char *operation = NULL;
+    const char *cg_opt = NULL;
     const char *cg_attr = NULL;
-    const char *type = NULL;
+    const char *cg_type = NULL;
 
     int opt, r_flag = 0, s_flag = 0, t_flag = 0;
 
@@ -28,7 +23,7 @@ int main(int argc, char *argv[]) {
                     fprintf(stderr, ERROR_RS_TOGETHER, argv[0]);
                     return EXIT_FAILURE;
                 }
-                operation = optarg;
+                cg_opt = optarg;
                 r_flag = 1;
                 break;
             case 's':
@@ -44,7 +39,7 @@ int main(int argc, char *argv[]) {
                     fprintf(stderr, ERROR_RS_TOGETHER, argv[0]);
                     return EXIT_FAILURE;
                 }
-                type = optarg;
+                cg_type = optarg;
                 t_flag = 1;
                 break;
             default:
@@ -67,19 +62,19 @@ int main(int argc, char *argv[]) {
     char **cg_attr_list;
 
     if (r_flag) {
-        if (strcmp(operation, "all") == 0) {
+        if (strcmp(cg_opt, "all") == 0) {
             cg_attr_list = get_cg_list(cg_path, &count);
             if (cg_attr_list == NULL) {
                 return EXIT_FAILURE;
             }
 
             for (int i = 0; i < count; i++) {
-                show_cg_attr(cg_path, cg_attr_list[i], type);
+                show_cg_attr(cg_path, cg_attr_list[i], cg_type);
             }
 
             free_cg_list(cg_attr_list, count);
         } else {
-            show_cg_attr(cg_path, operation, type);
+            show_cg_attr(cg_path, cg_opt, cg_type);
         }
     } else if (s_flag) {
         set_cg_attr(cg_path, cg_attr, argv[optind]);
@@ -92,13 +87,13 @@ int main(int argc, char *argv[]) {
 
         struct dirent *entry;
         while ((entry = readdir(dir)) != NULL) {
-            if (strncmp(entry->d_name, type, strlen(type)) == 0) {
-                show_cg_attr(cg_path, entry->d_name, type);
+            if (strncmp(entry->d_name, cg_type, strlen(cg_type)) == 0) {
+                show_cg_attr(cg_path, entry->d_name, cg_type);
             }
         }
         closedir(dir);
     } else {
-        fprintf(stderr, "Error: No operation specified. Use either -r or -s option.\n");
+        fprintf(stderr, "Error: No cg_opt specified. Use either -r or -s option.\n");
         return EXIT_FAILURE;
     }
 

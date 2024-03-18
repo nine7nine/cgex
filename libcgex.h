@@ -15,10 +15,10 @@
 char *read_cg_attr(const char *file_path);
 
 // Function to read and print a specific setting in a CGroup
-void show_cg_attr(const char *cg_path, const char *cg_attr, const char *type);
+void show_cg_attr(const char *cg_path, const char *cg_attr, const char *cg_type);
 
 // Function to set a value for a setting in a CGroup
-void set_cg_attr(const char *cg_path, const char *cg_attr, const char *value);
+void set_cg_attr(const char *cg_path, const char *cg_attr, const char *cg_value);
 
 // Function to get a list of settings in a CGroup
 char **get_cg_list(const char *cg_path, int *count);
