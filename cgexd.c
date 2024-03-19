@@ -27,7 +27,7 @@
 void rm_socket() {
     if (access(DAEMON_SOCKET_PATH, F_OK) != -1) {
         if (unlink(DAEMON_SOCKET_PATH) == -1) {
-            perror("unlink");
+            fprintf(stderr, "Error: Failed to remove socket file.\n");
             exit(EXIT_FAILURE);
         }
     }
@@ -43,14 +43,14 @@ void parse_cmd(const char *cmd, const char **cg_group, const char **cg_opt,
             *cg_group = strtok(NULL, " ");
         } else if (strcmp(token, "-r") == 0) {
             if (*s_flag || *t_flag) {
-                printf(ERROR_CANNOT_USE_R_S_TOGETHER);
+                fprintf(stderr, ERROR_CANNOT_USE_R_S_TOGETHER);
                 exit(EXIT_FAILURE);
             }
             *cg_opt = strtok(NULL, " ");
             *r_flag = 1;
         } else if (strcmp(token, "-s") == 0) {
             if (*r_flag || *t_flag) {
-                printf(ERROR_CANNOT_USE_R_S_TOGETHER);
+                fprintf(stderr, ERROR_CANNOT_USE_R_S_TOGETHER);
                 exit(EXIT_FAILURE);
             }
             *cg_attr = strtok(NULL, " ");
@@ -67,13 +67,13 @@ void parse_cmd(const char *cmd, const char **cg_group, const char **cg_opt,
             }
         } else if (strcmp(token, "-t") == 0) {
             if (*r_flag || *s_flag) {
-                printf(ERROR_CANNOT_USE_R_S_TOGETHER);
+                fprintf(stderr, ERROR_CANNOT_USE_R_S_TOGETHER);
                 exit(EXIT_FAILURE);
             }
             *cg_type = strtok(NULL, " ");
             *t_flag = 1;
         } else {
-            printf(ERROR_INVALID_COMMAND);
+            fprintf(stderr, ERROR_INVALID_COMMAND);
             exit(EXIT_FAILURE);
         }
         token = strtok(NULL, " ");
@@ -81,24 +81,12 @@ void parse_cmd(const char *cmd, const char **cg_group, const char **cg_opt,
 
     // If no command is specified, set the corresponding flag
     if (!(*r_flag || *s_flag || *t_flag)) {
-        printf(ERROR_NO_COMMAND);
+        fprintf(stderr, ERROR_NO_COMMAND);
         exit(EXIT_FAILURE);
     }
 }
 
-void ps_client_cmd(int client_fd) {
-    // Receive command from client
-    char cmd[MAX_COMMAND_LENGTH];
-    ssize_t bytes_received = recv(client_fd, cmd, sizeof(cmd) - 1, 0);
-    if (bytes_received < 0) {
-        perror("recv");
-        close(client_fd);
-        return;
-    }
-
-    cmd[bytes_received] = '\0';
-    printf("Received command: %s\n", cmd);
-
+void ps_client_cmd(int client_fd, const char *cmd) {
     // Parse command
     const char *cg_group = NULL;
     const char *cg_opt = NULL;
@@ -110,17 +98,22 @@ void ps_client_cmd(int client_fd) {
 
     // Validate command
     if (cg_group == NULL) {
-        printf(ERROR_MISSING_CG_GROUP);
+        fprintf(stderr, ERROR_MISSING_CG_GROUP);
         close(client_fd);
         return;
     }
 
     // Construct the full path of the cgroup
     char cg_path[BUF_SIZE];
-    snprintf(cg_path, sizeof(cg_path), "%s/%s", SYS_CGROUP_PATH, cg_group);
+    int path_len = snprintf(cg_path, sizeof(cg_path), "%s/%s", SYS_CGROUP_PATH, cg_group);
+    if (path_len >= (int)sizeof(cg_path)) {
+        fprintf(stderr, "Error: Path buffer overflow.\n");
+        close(client_fd);
+        return;
+    }
 
     if (s_flag && (cg_attr == NULL)) {
-        printf(ERROR_MISSING_CG_ATTR_FOR_S);
+        fprintf(stderr, ERROR_MISSING_CG_ATTR_FOR_S);
         close(client_fd);
         return;
     }
@@ -133,7 +126,7 @@ void ps_client_cmd(int client_fd) {
         if (strcmp(cg_opt, "all") == 0) {
             cg_attr_list = get_cg_list(cg_path, &count);
             if (cg_attr_list == NULL) {
-                printf(ERROR_RETRIEVE_CGROUP_ATTR_LIST);
+                fprintf(stderr, ERROR_RETRIEVE_CGROUP_ATTR_LIST);
                 close(client_fd);
                 return;
             }
@@ -164,7 +157,7 @@ void ps_client_cmd(int client_fd) {
         }
         closedir(dir);
     } else {
-        printf(ERROR_NO_COMMAND);
+        fprintf(stderr, ERROR_NO_COMMAND);
         close(client_fd);
         return;
     }
@@ -180,14 +173,14 @@ int main() {
     // Create Unix domain socket for communication
     int server_fd = socket(AF_UNIX, SOCK_STREAM, 0);
     if (server_fd == -1) {
-        perror("socket");
+        fprintf(stderr, "Error: Failed to create socket.\n");
         exit(EXIT_FAILURE);
     }
 
     // Set SO_REUSEADDR option
     int optval = 1;
     if (setsockopt(server_fd, SOL_SOCKET, SO_REUSEADDR, &optval, sizeof(optval)) == -1) {
-        perror("setsockopt");
+        fprintf(stderr, "Error: Failed to set socket option.\n");
         exit(EXIT_FAILURE);
     }
 
@@ -197,12 +190,12 @@ int main() {
     strncpy(server_addr.sun_path, DAEMON_SOCKET_PATH, sizeof(server_addr.sun_path) - 1);
 
     if (bind(server_fd, (struct sockaddr *)&server_addr, sizeof(server_addr)) == -1) {
-        perror("bind");
+        fprintf(stderr, "Error: Failed to bind socket.\n");
         exit(EXIT_FAILURE);
     }
 
     if (listen(server_fd, 1) == -1) {
-        perror("listen");
+        fprintf(stderr, "Error: Failed to listen on socket.\n");
         exit(EXIT_FAILURE);
     }
 
@@ -210,21 +203,30 @@ int main() {
     while (1) {
         int client_fd = accept(server_fd, NULL, NULL);
         if (client_fd == -1) {
-            perror("accept");
+            fprintf(stderr, "Error: Failed to accept connection.\n");
             continue;
         }
 
         // Fork a child process to handle client command
         pid_t pid = fork();
         if (pid == -1) {
-            perror("fork");
+            fprintf(stderr, "Error: Failed to fork.\n");
             close(client_fd);
             continue;
         } else if (pid == 0) {
 
             // Child process
             close(server_fd);
-            ps_client_cmd(client_fd);
+            char cmd[MAX_COMMAND_LENGTH];
+            ssize_t bytes_received = recv(client_fd, cmd, sizeof(cmd) - 1, 0);
+            if (bytes_received < 0) {
+                fprintf(stderr, "Error: Failed to receive command.\n");
+                close(client_fd);
+                return EXIT_FAILURE;
+            }
+            cmd[bytes_received] = '\0';
+            printf("Received command: %s\n", cmd);
+            ps_client_cmd(client_fd, cmd);
             exit(EXIT_SUCCESS);
         } else {
             // Parent process
@@ -236,3 +238,4 @@ int main() {
     rm_socket();
     return EXIT_SUCCESS;
 }
+
