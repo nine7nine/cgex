@@ -8,26 +8,20 @@
 #include <syslog.h>
 #include <sys/socket.h>
 #include <sys/un.h>
+#include <dirent.h>
+#include <string.h>
 
 #define DAEMON_SOCKET_PATH "/var/run/cgexd_socket"
 #define MAX_COMMAND_LENGTH 100
 #define BUF_SIZE 256
 #define SYS_CGROUP_PATH "/sys/fs/cgroup"
 
-// Function to handle termination signals
-void signal_handler(int sig) {
-    switch(sig) {
-        case SIGHUP:
-            // Re-read configuration file
-            break;
-        case SIGTERM:
-            syslog(LOG_INFO, "Received SIGTERM, exiting...");
-            exit(EXIT_SUCCESS);
-            break;
-        default:
-            break;
-    }
-}
+#define ERROR_CANNOT_USE_R_S_TOGETHER "Error: Cannot use -r and -s options together.\n"
+#define ERROR_INVALID_COMMAND "Error: Invalid command.\n"
+#define ERROR_MISSING_CG_GROUP "Error: Missing cg_group argument.\n"
+#define ERROR_MISSING_CG_ATTR_FOR_S "Error: Missing cg_attr argument for -s option.\n"
+#define ERROR_NO_COMMAND "Error: No command specified.\n"
+#define ERROR_RETRIEVE_CGROUP_ATTR_LIST "Error: Failed to retrieve cgroup attributes list.\n"
 
 // Function to remove the socket file if it exists
 void rm_socket() {
@@ -36,6 +30,43 @@ void rm_socket() {
             perror("unlink");
             exit(EXIT_FAILURE);
         }
+    }
+}
+
+// Function to parse the command received from the client
+void parse_cmd(const char *cmd, const char **cg_group, const char **cg_opt,
+                   const char **cg_attr, const char **cg_type,
+                   int *r_flag, int *s_flag, int *t_flag) {
+    char *token = strtok((char *)cmd, " ");
+    while (token != NULL) {
+        if (strcmp(token, "-g") == 0) {
+            *cg_group = strtok(NULL, " ");
+        } else if (strcmp(token, "-r") == 0) {
+            if (*s_flag || *t_flag) {
+                printf(ERROR_CANNOT_USE_R_S_TOGETHER);
+                exit(EXIT_FAILURE);
+            }
+            *cg_opt = strtok(NULL, " ");
+            *r_flag = 1;
+        } else if (strcmp(token, "-s") == 0) {
+            if (*r_flag || *t_flag) {
+                printf(ERROR_CANNOT_USE_R_S_TOGETHER);
+                exit(EXIT_FAILURE);
+            }
+            *cg_attr = strtok(NULL, " ");
+            *s_flag = 1;
+        } else if (strcmp(token, "-t") == 0) {
+            if (*r_flag || *s_flag) {
+                printf(ERROR_CANNOT_USE_R_S_TOGETHER);
+                exit(EXIT_FAILURE);
+            }
+            *cg_type = strtok(NULL, " ");
+            *t_flag = 1;
+        } else {
+            printf(ERROR_INVALID_COMMAND);
+            exit(EXIT_FAILURE);
+        }
+        token = strtok(NULL, " ");
     }
 }
 
@@ -59,45 +90,11 @@ void ps_client_cmd(int client_fd) {
     const char *cg_type = NULL;
     int r_flag = 0, s_flag = 0, t_flag = 0;
 
-    char *token = strtok(cmd, " ");
-    while (token != NULL) {
-        if (strcmp(token, "-g") == 0) {
-            cg_group = strtok(NULL, " ");
-        } else if (strcmp(token, "-r") == 0) {
-            if (s_flag || t_flag) {
-                printf("Error: Cannot use -r and -s options together.\n");
-                close(client_fd);
-                return;
-            }
-            cg_opt = strtok(NULL, " ");
-            r_flag = 1;
-        } else if (strcmp(token, "-s") == 0) {
-            if (r_flag || t_flag) {
-                printf("Error: Cannot use -r and -s options together.\n");
-                close(client_fd);
-                return;
-            }
-            cg_attr = strtok(NULL, " ");
-            s_flag = 1;
-        } else if (strcmp(token, "-t") == 0) {
-            if (r_flag || s_flag) {
-                printf("Error: Cannot use -r and -s options together.\n");
-                close(client_fd);
-                return;
-            }
-            cg_type = strtok(NULL, " ");
-            t_flag = 1;
-        } else {
-            printf("Error: Invalid command.\n");
-            close(client_fd);
-            return;
-        }
-        token = strtok(NULL, " ");
-    }
+    parse_cmd(cmd, &cg_group, &cg_opt, &cg_attr, &cg_type, &r_flag, &s_flag, &t_flag);
 
     // Validate command
     if (cg_group == NULL) {
-        printf("Error: Missing cg_group argument.\n");
+        printf(ERROR_MISSING_CG_GROUP);
         close(client_fd);
         return;
     }
@@ -107,7 +104,7 @@ void ps_client_cmd(int client_fd) {
     snprintf(cg_path, sizeof(cg_path), "%s/%s", SYS_CGROUP_PATH, cg_group);
 
     if (s_flag && (cg_attr == NULL)) {
-        printf("Error: Missing cg_attr argument for -s option.\n");
+        printf(ERROR_MISSING_CG_ATTR_FOR_S);
         close(client_fd);
         return;
     }
@@ -120,7 +117,7 @@ void ps_client_cmd(int client_fd) {
         if (strcmp(cg_opt, "all") == 0) {
             cg_attr_list = get_cg_list(cg_path, &count);
             if (cg_attr_list == NULL) {
-                printf("Error: Failed to retrieve cgroup attributes list.\n");
+                printf(ERROR_RETRIEVE_CGROUP_ATTR_LIST);
                 close(client_fd);
                 return;
             }
@@ -151,7 +148,7 @@ void ps_client_cmd(int client_fd) {
         }
         closedir(dir);
     } else {
-        printf("Error: No command specified.\n");
+        printf(ERROR_NO_COMMAND);
         close(client_fd);
         return;
     }
@@ -223,4 +220,3 @@ int main() {
     rm_socket();
     return EXIT_SUCCESS;
 }
-
