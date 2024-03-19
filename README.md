@@ -10,19 +10,35 @@ Currently, CGex consists of 3 parts:
 
 ### cgex CLI interface
 - cgex.c
+### cgexd
+- cgexd.c (daemon)
+- cgexd-cli (cli for daemon)
 
-NOTE: A cgexd daemon and Gtk3 app are planned, but for now there is other work to do first.
+NOTE: A Gtk3 app is planned, but for now there is much more work to do, first.
 
-CGex CLI Compilation:
+Compilation:
 
 ```
 gcc -o cgex cgex.c libcgex.c
+gcc -o cgexd cgexd.c libcgex.c
+gcc -o cgexd-cli -g cgexd-cli.c libcgex.c
+```
+or with GCC's AddressSanitzer: ( it's C after all. haha! )
+
+```
+gcc -o cgexd -g -O1 -fsanitize=address cgex.c libcgex.c
+gcc -o cgexd -g -O1 -fsanitize=address cgexd.c libcgex.c
+gcc -o cgexd-cli -g -O1 -fsanitize=address cgexd-cli.c libcgex.c
 ```
 
-Usage:
+## Usage:
+
+Both cgex and cgexd-cli have the same CLI interface. However, if using cgexd-cli; you must first start cgexd (as root). As well, with
+cgexd-cli you will not see any output, as the cli will only execute, while cgexd hadles actually using libcgex. But othersie, they behave 
+exactly the same in functionality.
 
 ```
-./cgex -g <cg_group> [-r <all|cg_attr> | -s <cg_attr> <cg_value> | -t <cg_type>]
+sudo ./cgex -g <cg_group> [-r <all|cg_attr> | -s <cg_attr> <cg_value> | -t <cg_type>]
 ```
 
 Some of the basics are in-place. Such as being able to query, filter and modify cgroups data in /sys/fs/cgroup, which is usfeul, as is.
