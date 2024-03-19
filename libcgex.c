@@ -1,4 +1,4 @@
-// cgex_lib.c
+// libcgex.c
 #include "libcgex.h"
 
 // Function to read the contents of a file

@@ -1,27 +1,4 @@
 #include "libcgex.h"
-#include <stdio.h>
-#include <stdlib.h>
-#include <sys/types.h>
-#include <sys/stat.h>
-#include <unistd.h>
-#include <signal.h>
-#include <syslog.h>
-#include <sys/socket.h>
-#include <sys/un.h>
-#include <dirent.h>
-#include <string.h>
-
-#define DAEMON_SOCKET_PATH "/var/run/cgexd_socket"
-#define MAX_COMMAND_LENGTH 100
-#define BUF_SIZE 256
-#define SYS_CGROUP_PATH "/sys/fs/cgroup"
-
-#define ERROR_CANNOT_USE_R_S_TOGETHER "Error: Cannot use -r and -s options together.\n"
-#define ERROR_INVALID_COMMAND "Error: Invalid command.\n"
-#define ERROR_MISSING_CG_GROUP "Error: Missing cg_group argument.\n"
-#define ERROR_MISSING_CG_ATTR_FOR_S "Error: Missing cg_attr argument for -s option.\n"
-#define ERROR_NO_COMMAND "Error: No command specified.\n"
-#define ERROR_RETRIEVE_CGROUP_ATTR_LIST "Error: Failed to retrieve cgroup attributes list.\n"
 
 // Function to remove the socket file if it exists
 void rm_socket() {
@@ -43,14 +20,14 @@ void parse_cmd(const char *cmd, const char **cg_group, const char **cg_opt,
             *cg_group = strtok(NULL, " ");
         } else if (strcmp(token, "-r") == 0) {
             if (*s_flag || *t_flag) {
-                fprintf(stderr, ERROR_CANNOT_USE_R_S_TOGETHER);
+                fprintf(stderr, ERROR_RS_TOGETHER);
                 exit(EXIT_FAILURE);
             }
             *cg_opt = strtok(NULL, " ");
             *r_flag = 1;
         } else if (strcmp(token, "-s") == 0) {
             if (*r_flag || *t_flag) {
-                fprintf(stderr, ERROR_CANNOT_USE_R_S_TOGETHER);
+                fprintf(stderr, ERROR_RS_TOGETHER);
                 exit(EXIT_FAILURE);
             }
             *cg_attr = strtok(NULL, " ");
@@ -67,7 +44,7 @@ void parse_cmd(const char *cmd, const char **cg_group, const char **cg_opt,
             }
         } else if (strcmp(token, "-t") == 0) {
             if (*r_flag || *s_flag) {
-                fprintf(stderr, ERROR_CANNOT_USE_R_S_TOGETHER);
+                fprintf(stderr, ERROR_RS_TOGETHER);
                 exit(EXIT_FAILURE);
             }
             *cg_type = strtok(NULL, " ");
@@ -238,4 +215,3 @@ int main() {
     rm_socket();
     return EXIT_SUCCESS;
 }
-

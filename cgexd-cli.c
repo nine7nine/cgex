@@ -1,19 +1,4 @@
-#include <stdio.h>
-#include <stdlib.h>
-#include <unistd.h>
-#include <string.h>
-#include <sys/socket.h>
-#include <sys/un.h>
-
-#define MAX_COMMAND_LENGTH 100
-#define BUF_SIZE 256
-#define DAEMON_SOCKET_PATH "/var/run/cgexd_socket"
-
-// Error messages
-#define ERROR_RS_TOGETHER "Error: Cannot use -r and -s options together.\n"
-#define ERROR_USAGE "Usage: %s -g <cg_group> [-r <all|cg_attr> | -s <cg_attr> <cg_value> | -t <cg_type>]\n"
-#define ERROR_MISSING_ARG "Error: Missing cg_attr or cg_value argument for -s option.\n"
-#define ERROR_MISSING_GROUP "Error: Missing mandatory argument -g\n"
+#include "libcgex.h"
 
 // Helper function to concatenate strings safely
 void concat_str(char *dest, const char *src) {
@@ -136,4 +121,3 @@ int main(int argc, char *argv[]) {
 
     return EXIT_SUCCESS;
 }
-
