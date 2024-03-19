@@ -21,7 +21,7 @@ int main(int argc, char *argv[]) {
                 break;
             case 'r':
                 if (s_flag || t_flag) {
-                    fprintf(stderr, ERROR_RS_TOGETHER, argv[0]);
+                    fprintf(stderr, ERROR_RS_TOGETHER);
                     return EXIT_FAILURE;
                 }
                 cg_opt = optarg;
@@ -29,7 +29,7 @@ int main(int argc, char *argv[]) {
                 break;
             case 's':
                 if (r_flag || t_flag) {
-                    fprintf(stderr, ERROR_RS_TOGETHER, argv[0]);
+                    fprintf(stderr, ERROR_RS_TOGETHER);
                     return EXIT_FAILURE;
                 }
                 cg_attr = optarg;
@@ -37,7 +37,7 @@ int main(int argc, char *argv[]) {
                 break;
             case 't':
                 if (r_flag || s_flag) {
-                    fprintf(stderr, ERROR_RS_TOGETHER, argv[0]);
+                    fprintf(stderr, ERROR_RS_TOGETHER);
                     return EXIT_FAILURE;
                 }
                 cg_type = optarg;
