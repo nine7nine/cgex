@@ -63,30 +63,30 @@ int main(int argc, char *argv[]) {
     }
 
     // Construct command
-    char command[MAX_COMMAND_LENGTH];
-    snprintf(command, sizeof(command), "-g %s", cg_group);
+    char cmd[MAX_COMMAND_LENGTH];
+    snprintf(cmd, sizeof(cmd), "-g %s", cg_group);
     if (r_flag) {
         if (strcmp(cg_opt, "all") == 0) {
-            strncat(command, " -r all", sizeof(command) - strlen(command) - 1);
+            strncat(cmd, " -r all", sizeof(cmd) - strlen(cmd) - 1);
         } else {
-            strncat(command, " -r", sizeof(command) - strlen(command) - 1);
-            strncat(command, " ", sizeof(command) - strlen(command) - 1);
-            strncat(command, cg_opt, sizeof(command) - strlen(command) - 1);
+            strncat(cmd, " -r", sizeof(cmd) - strlen(cmd) - 1);
+            strncat(cmd, " ", sizeof(cmd) - strlen(cmd) - 1);
+            strncat(cmd, cg_opt, sizeof(cmd) - strlen(cmd) - 1);
         }
     } else if (s_flag) {
         if (optind >= argc) {
             fprintf(stderr, "Error: Missing argument for -s option\n");
             return EXIT_FAILURE;
         }
-        strncat(command, " -s", sizeof(command) - strlen(command) - 1);
-        strncat(command, " ", sizeof(command) - strlen(command) - 1);
-        strncat(command, cg_attr, sizeof(command) - strlen(command) - 1);
-        strncat(command, " ", sizeof(command) - strlen(command) - 1);
-        strncat(command, argv[optind], sizeof(command) - strlen(command) - 1);
+        strncat(cmd, " -s", sizeof(cmd) - strlen(cmd) - 1);
+        strncat(cmd, " ", sizeof(cmd) - strlen(cmd) - 1);
+        strncat(cmd, cg_attr, sizeof(cmd) - strlen(cmd) - 1);
+        strncat(cmd, " ", sizeof(cmd) - strlen(cmd) - 1);
+        strncat(cmd, argv[optind], sizeof(cmd) - strlen(cmd) - 1);
     } else if (t_flag) {
-        strncat(command, " -t", sizeof(command) - strlen(command) - 1);
-        strncat(command, " ", sizeof(command) - strlen(command) - 1);
-        strncat(command, cg_type, sizeof(command) - strlen(command) - 1);
+        strncat(cmd, " -t", sizeof(cmd) - strlen(cmd) - 1);
+        strncat(cmd, " ", sizeof(cmd) - strlen(cmd) - 1);
+        strncat(cmd, cg_type, sizeof(cmd) - strlen(cmd) - 1);
     }
 
     // Connect to the daemon
@@ -108,13 +108,13 @@ int main(int argc, char *argv[]) {
     }
 
     // Send command to daemon
-    if (send(sockfd, command, strlen(command), 0) < 0) {
+    if (send(sockfd, cmd, strlen(cmd), 0) < 0) {
         perror("send");
         close(sockfd);
         return EXIT_FAILURE;
     }
 
-    printf("Sent command to daemon: %s\n", command);
+    printf("Sent command to daemon: %s\n", cmd);
 
     // Receive and print response from daemon
     char response[BUF_SIZE];

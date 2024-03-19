@@ -30,7 +30,7 @@ void signal_handler(int sig) {
 }
 
 // Function to remove the socket file if it exists
-void remove_socket_file() {
+void rm_socket() {
     if (access(DAEMON_SOCKET_PATH, F_OK) != -1) {
         if (unlink(DAEMON_SOCKET_PATH) == -1) {
             perror("unlink");
@@ -39,18 +39,18 @@ void remove_socket_file() {
     }
 }
 
-void process_client_command(int client_fd) {
+void ps_client_cmd(int client_fd) {
     // Receive command from client
-    char command[MAX_COMMAND_LENGTH];
-    ssize_t bytes_received = recv(client_fd, command, sizeof(command) - 1, 0);
+    char cmd[MAX_COMMAND_LENGTH];
+    ssize_t bytes_received = recv(client_fd, cmd, sizeof(cmd) - 1, 0);
     if (bytes_received < 0) {
         perror("recv");
         close(client_fd);
         return;
     }
 
-    command[bytes_received] = '\0';
-    printf("Received command: %s\n", command);
+    cmd[bytes_received] = '\0';
+    printf("Received command: %s\n", cmd);
 
     // Parse command
     const char *cg_group = NULL;
@@ -59,7 +59,7 @@ void process_client_command(int client_fd) {
     const char *cg_type = NULL;
     int r_flag = 0, s_flag = 0, t_flag = 0;
 
-    char *token = strtok(command, " ");
+    char *token = strtok(cmd, " ");
     while (token != NULL) {
         if (strcmp(token, "-g") == 0) {
             cg_group = strtok(NULL, " ");
@@ -162,7 +162,7 @@ void process_client_command(int client_fd) {
 // Main function of the daemon
 int main() {
     // Remove socket file if it exists
-    remove_socket_file();
+    rm_socket();
 
     // Create Unix domain socket for communication
     int server_fd = socket(AF_UNIX, SOCK_STREAM, 0);
@@ -208,9 +208,10 @@ int main() {
             close(client_fd);
             continue;
         } else if (pid == 0) {
+
             // Child process
             close(server_fd);
-            process_client_command(client_fd);
+            ps_client_cmd(client_fd);
             exit(EXIT_SUCCESS);
         } else {
             // Parent process
@@ -219,7 +220,7 @@ int main() {
     }
 
     close(server_fd);
-    remove_socket_file();
+    rm_socket();
     return EXIT_SUCCESS;
 }
 
