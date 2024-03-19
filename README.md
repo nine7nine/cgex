@@ -7,28 +7,25 @@ Currently, CGex consists of 3 parts:
 ### LibCGex C Library
 - libcgex.h
 - libcgex.c
-
 ### cgex CLI interface
 - cgex.c
-### cgexd
+### cgexd CLI and Daemon
 - cgexd.c (daemon)
 - cgexd-cli (cli for daemon)
+### cgex-gtk (dummy app)
+- cgex-gtk.c
 
 NOTE: A Gtk3 app is planned, but for now there is much more work to do, first.
 
 Compilation:
 
 ```
-gcc -o cgex cgex.c libcgex.c
-gcc -o cgexd cgexd.c libcgex.c
-gcc -o cgexd-cli -g cgexd-cli.c libcgex.c
+make
 ```
 or with GCC's AddressSanitzer: ( it's C after all. haha! )
 
 ```
-gcc -o cgexd -g -O1 -fsanitize=address cgex.c libcgex.c
-gcc -o cgexd -g -O1 -fsanitize=address cgexd.c libcgex.c
-gcc -o cgexd-cli -g -O1 -fsanitize=address cgexd-cli.c libcgex.c
+make SANITIZE=1
 ```
 
 ## Usage:
