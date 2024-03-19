@@ -54,7 +54,17 @@ void parse_cmd(const char *cmd, const char **cg_group, const char **cg_opt,
                 exit(EXIT_FAILURE);
             }
             *cg_attr = strtok(NULL, " ");
-            *s_flag = 1;
+            // Handle Delineators '--'
+            token = strtok(NULL, " ");
+            if (token != NULL && strcmp(token, "--") == 0) {
+                *s_flag = 1;
+                *cg_type = strtok(NULL, " ");
+                break;
+            } else {
+                *s_flag = 1;
+                *cg_type = token;
+                break;
+            }
         } else if (strcmp(token, "-t") == 0) {
             if (*r_flag || *s_flag) {
                 printf(ERROR_CANNOT_USE_R_S_TOGETHER);
@@ -67,6 +77,12 @@ void parse_cmd(const char *cmd, const char **cg_group, const char **cg_opt,
             exit(EXIT_FAILURE);
         }
         token = strtok(NULL, " ");
+    }
+
+    // If no command is specified, set the corresponding flag
+    if (!(*r_flag || *s_flag || *t_flag)) {
+        printf(ERROR_NO_COMMAND);
+        exit(EXIT_FAILURE);
     }
 }
 
