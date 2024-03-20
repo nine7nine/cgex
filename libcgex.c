@@ -37,7 +37,7 @@ char *read_cg_attr(const char *file_path) {
 }
 
 // Helper function to print process information
-void ps_stat_info(int pid) {
+void ps_stat_info(int pid, char *output_buffer, size_t buffer_size) {
     // Construct the file path for the stat file of the PID
     char pid_stat_path[BUF_SIZE];
     snprintf(pid_stat_path, sizeof(pid_stat_path), "/proc/%d/stat", pid);
@@ -48,17 +48,17 @@ void ps_stat_info(int pid) {
         // Extract process name from stat file
         char process_name[BUF_SIZE];
         if (fscanf(stat_file, "%*d (%[^)])", process_name) == 1) {
-            // Print PID and process name
-            printf("\n%d - %s", pid, process_name);
+            // Append PID and process name to the output buffer
+            snprintf(output_buffer + strlen(output_buffer), buffer_size - strlen(output_buffer), "%d - %s", pid, process_name);
         }
         fclose(stat_file);
     }
 }
 
 // Function to read and print a specific setting in a CGroup
-void show_cg_attr(const char *cg_path, const char *cg_attr, const char *cg_type) {
+void show_cg_attr(const char *cg_path, const char *cg_attr, const char *cg_type, char *output_buffer, size_t buffer_size) {
     if (cg_path == NULL || cg_attr == NULL) {
-        fprintf(stderr, "NULL input parameter(s) detected\n");
+        snprintf(output_buffer, buffer_size, "NULL input parameter(s) detected\n");
         return;
     }
 
@@ -69,7 +69,7 @@ void show_cg_attr(const char *cg_path, const char *cg_attr, const char *cg_type)
     // Open the file for reading
     FILE *file = fopen(file_path, "r");
     if (file == NULL) {
-        fprintf(stderr, "Failed to open file: %s\n", file_path);
+        snprintf(output_buffer, buffer_size, "Failed to open file: %s\n", file_path);
         return;
     }
 
@@ -82,58 +82,68 @@ void show_cg_attr(const char *cg_path, const char *cg_attr, const char *cg_type)
         }
     }
 
-    // Print the setting name
-    printf("%s: ", cg_attr);
+    // Write the setting name to the buffer
+    int len = snprintf(output_buffer, buffer_size, "%s: ", cg_attr);
 
     // If the setting is cgroup.threads, process the PIDs
     if (strcmp(cg_attr, "cgroup.threads") == 0) {
+        // Print newline before printing PIDs
+        snprintf(output_buffer + len, buffer_size - len, "\n");
+        len++;
+        
         char line[BUF_SIZE];
         while (fgets(line, sizeof(line), file) != NULL) {
             // Remove trailing newline character
-            size_t len = strlen(line);
-            if (len > 0 && line[len - 1] == '\n') {
-                line[len - 1] = '\0';
+            size_t line_len = strlen(line);
+            if (line_len > 0 && line[line_len - 1] == '\n') {
+                line[line_len - 1] = '\0';
             }
 
-            // Convert PID string to integer
             int pid = atoi(line);
 
             // Print process information
-            ps_stat_info(pid);
+            ps_stat_info(pid, output_buffer + len, buffer_size - len);
+            len = strlen(output_buffer);
+            snprintf(output_buffer + len, buffer_size - len, "\n");
         }
     } else {
-        // Read and print the content of the setting file
+        // Read the content of the setting file into the buffer
         char *content = read_cg_attr(file_path);
         if (content != NULL) {
-            printf("%s", content);
+            len += snprintf(output_buffer + len, buffer_size - len, "%s", content);
             free(content);
         }
     }
 
-    printf("\n");
+    // Append newline character
+    snprintf(output_buffer + len, buffer_size - len, "\n");
+
     fclose(file);
 }
 
 // Function to set a value for a setting in a CGroup
-void set_cg_attr(const char *cg_path, const char *cg_attr, const char *cg_value) {
+void set_cg_attr(const char *cg_path, const char *cg_attr, const char *cg_value, char *output_buffer, size_t buffer_size) {
     if (cg_path == NULL || cg_attr == NULL || cg_value == NULL) {
-        fprintf(stderr, "NULL input parameter(s) detected\n");
+        snprintf(output_buffer, buffer_size, "NULL input parameter(s) detected\n");
         return;
     }
 
     char file_path[BUF_SIZE];
     snprintf(file_path, sizeof(file_path), "%s/%s", cg_path, cg_attr);
 
+    // Write the update message to the buffer
+    snprintf(output_buffer, buffer_size, "Updated %s: %s\n", cg_attr, cg_value);
+
+    // Open the file for writing
     FILE *file = fopen(file_path, "w");
     if (file == NULL) {
         perror("fopen");
         return;
     }
 
+    // Write the value to the file
     fprintf(file, "%s\n", cg_value);
     fclose(file);
-
-    printf("Updated %s: %s\n", cg_attr, cg_value);
 }
 
 // Function to get a list of settings in a CGroup

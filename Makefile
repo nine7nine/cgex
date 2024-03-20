@@ -3,8 +3,8 @@ CFLAGS = -Wall -Wextra
 LIBCGEX_SRC = libcgex.c
 LIBCGEX_HEADER = libcgex.h
 
-TARGETS = cgex cgexd cgexd-cli cgex-gtk
-SRC = cgex.c cgexd.c cgexd-cli.c cgex-gtk.c
+TARGETS = cgexd cgexd-cli cgex-gtk
+SRC = cgexd.c cgexd-cli.c cgex-gtk.c
 OBJ = $(SRC:.c=.o)
 
 ifdef SANITIZE
@@ -14,9 +14,6 @@ else
 endif
 
 all: $(TARGETS)
-
-cgex: cgex.c $(LIBCGEX_SRC) $(LIBCGEX_HEADER)
-	$(CC) $(CFLAGS) $(SANITIZE_FLAGS) -o $@ $^
 
 cgexd: cgexd.c $(LIBCGEX_SRC) $(LIBCGEX_HEADER)
 	$(CC) $(CFLAGS) $(SANITIZE_FLAGS) -o $@ $^

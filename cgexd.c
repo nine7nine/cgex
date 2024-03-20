@@ -63,7 +63,9 @@ void parse_cmd(const char *cmd, const char **cg_group, const char **cg_opt,
     }
 }
 
-void ps_client_cmd(int client_fd, const char *cmd) {
+#include "libcgex.h"
+
+void ps_client_cmd(int client_fd, const char *cmd, char *output_buffer, size_t buffer_size) {
     // Parse command
     const char *cg_group = NULL;
     const char *cg_opt = NULL;
@@ -75,7 +77,8 @@ void ps_client_cmd(int client_fd, const char *cmd) {
 
     // Validate command
     if (cg_group == NULL) {
-        fprintf(stderr, ERROR_MISSING_CG_GROUP);
+        snprintf(output_buffer, buffer_size, "%s", ERROR_MISSING_CG_GROUP);
+        send(client_fd, output_buffer, strlen(output_buffer), 0);
         close(client_fd);
         return;
     }
@@ -84,13 +87,15 @@ void ps_client_cmd(int client_fd, const char *cmd) {
     char cg_path[BUF_SIZE];
     int path_len = snprintf(cg_path, sizeof(cg_path), "%s/%s", SYS_CGROUP_PATH, cg_group);
     if (path_len >= (int)sizeof(cg_path)) {
-        fprintf(stderr, "Error: Path buffer overflow.\n");
+        snprintf(output_buffer, buffer_size, "Error: Path buffer overflow.\n");
+        send(client_fd, output_buffer, strlen(output_buffer), 0);
         close(client_fd);
         return;
     }
 
     if (s_flag && (cg_attr == NULL)) {
-        fprintf(stderr, ERROR_MISSING_CG_ATTR_FOR_S);
+        snprintf(output_buffer, buffer_size, "%s", ERROR_MISSING_CG_ATTR_FOR_S);
+        send(client_fd, output_buffer, strlen(output_buffer), 0);
         close(client_fd);
         return;
     }
@@ -103,40 +108,48 @@ void ps_client_cmd(int client_fd, const char *cmd) {
         if (strcmp(cg_opt, "all") == 0) {
             cg_attr_list = get_cg_list(cg_path, &count);
             if (cg_attr_list == NULL) {
-                fprintf(stderr, ERROR_RETRIEVE_CGROUP_ATTR_LIST);
+                snprintf(output_buffer, buffer_size, "%s", ERROR_RETRIEVE_CGROUP_ATTR_LIST);
+                send(client_fd, output_buffer, strlen(output_buffer), 0);
                 close(client_fd);
                 return;
             }
 
             for (int i = 0; i < count; i++) {
-                show_cg_attr(cg_path, cg_attr_list[i], cg_type);
+                show_cg_attr(cg_path, cg_attr_list[i], cg_type, output_buffer, buffer_size);
+                send(client_fd, output_buffer, strlen(output_buffer), 0);
             }
 
             free_cg_list(cg_attr_list, count);
         } else {
-            show_cg_attr(cg_path, cg_opt, cg_type);
+            show_cg_attr(cg_path, cg_opt, cg_type, output_buffer, buffer_size);
+            send(client_fd, output_buffer, strlen(output_buffer), 0);
         }
     } else if (s_flag) {
-        set_cg_attr(cg_path, cg_attr, cg_type);
+        set_cg_attr(cg_path, cg_attr, cg_type, output_buffer, sizeof(output_buffer));
+        snprintf(output_buffer, buffer_size, "Updated %s: %s\n", cg_attr, cg_type);
+        send(client_fd, output_buffer, strlen(output_buffer), 0);
     } else if (t_flag) {
         DIR *dir = opendir(cg_path);
         if (dir == NULL) {
-            perror("opendir");
+            snprintf(output_buffer, buffer_size, "opendir.\n");
+            send(client_fd, output_buffer, strlen(output_buffer), 0);
             close(client_fd);
             return;
         }
 
         struct dirent *entry;
+        size_t type_len = strlen(cg_type);
         while ((entry = readdir(dir)) != NULL) {
-            if (strncmp(entry->d_name, cg_type, strlen(cg_type)) == 0) {
-                show_cg_attr(cg_path, entry->d_name, cg_type);
+            // Filter cgroup attributes by type
+            if (strncmp(entry->d_name, cg_type, type_len) == 0 && entry->d_name[type_len] == '.') {
+                show_cg_attr(cg_path, entry->d_name, cg_type, output_buffer, buffer_size);
+                send(client_fd, output_buffer, strlen(output_buffer), 0);
             }
         }
         closedir(dir);
     } else {
-        fprintf(stderr, ERROR_NO_COMMAND);
-        close(client_fd);
-        return;
+        snprintf(output_buffer, buffer_size, "%s", ERROR_NO_COMMAND);
+        send(client_fd, output_buffer, strlen(output_buffer), 0);
     }
     
     close(client_fd);
@@ -176,6 +189,9 @@ int main() {
         exit(EXIT_FAILURE);
     }
 
+    // Define output_buffer variable
+    char output_buffer[BUF_SIZE];
+
     // Main daemon loop
     while (1) {
         int client_fd = accept(server_fd, NULL, NULL);
@@ -191,7 +207,6 @@ int main() {
             close(client_fd);
             continue;
         } else if (pid == 0) {
-
             // Child process
             close(server_fd);
             char cmd[MAX_COMMAND_LENGTH];
@@ -202,8 +217,8 @@ int main() {
                 return EXIT_FAILURE;
             }
             cmd[bytes_received] = '\0';
-            printf("Received command: %s\n", cmd);
-            ps_client_cmd(client_fd, cmd);
+            //printf("Received command: %s\n", cmd);
+            ps_client_cmd(client_fd, cmd, output_buffer, sizeof(output_buffer));
             exit(EXIT_SUCCESS);
         } else {
             // Parent process

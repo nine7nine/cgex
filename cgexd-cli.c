@@ -81,7 +81,7 @@ int main(int argc, char *argv[]) {
     // Connect to the daemon
     int sockfd = socket(AF_UNIX, SOCK_STREAM, 0);
     if (sockfd < 0) {
-        perror("socket");
+        fprintf(stderr, "socket.\n");
         return EXIT_FAILURE;
     }
 
@@ -91,31 +91,33 @@ int main(int argc, char *argv[]) {
     strncpy(server_addr.sun_path, DAEMON_SOCKET_PATH, sizeof(server_addr.sun_path) - 1);
 
     if (connect(sockfd, (struct sockaddr *)&server_addr, sizeof(server_addr)) < 0) {
-        perror("connect");
+        fprintf(stderr, "connect.\n");
         close(sockfd);
         return EXIT_FAILURE;
     }
 
     // Send command to daemon
     if (send(sockfd, cmd, strlen(cmd), 0) < 0) {
-        perror("send");
+        fprintf(stderr, "send.\n");
         close(sockfd);
         return EXIT_FAILURE;
     }
 
-    printf("Sent command to daemon: %s\n", cmd);
+    //printf("Sent command to daemon: %s\n", cmd);
 
     // Receive and print response from daemon
     char response[BUF_SIZE];
-    ssize_t bytes_received = recv(sockfd, response, sizeof(response) - 1, 0);
+    ssize_t bytes_received;
+    while ((bytes_received = recv(sockfd, response, sizeof(response) - 1, 0)) > 0) {
+        response[bytes_received] = '\0';
+        printf("%s", response);
+    }
+
     if (bytes_received < 0) {
-        perror("recv");
+        fprintf(stderr, "recv.\n");
         close(sockfd);
         return EXIT_FAILURE;
     }
-
-    response[bytes_received] = '\0';
-    printf("%s", response);
 
     close(sockfd);
 
