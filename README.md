@@ -1,14 +1,16 @@
 # CGex (CGroups Exhibitor)
 
-CGex is a set of tools for managing and exploring CGroups. This repo is also an experiment in using ChatGPT to develop these tools.
+CGex is asmall C library, daemon and CLI tool for use with Linux Control Groups (CGroups). Yes, there are some other tools in Systemd, libcgroup, etc. that are fantastic (and I use them), but my motivation for this project is a bit different.
 
-Currently, CGex consists of 3 parts:
+1. I wanted a set of cgroup management tools with less complexity than some of the alternatives.
+2. I wanted to build a small library to assist in building a daemon, CLI and GTK app for cgroups management.
+3. This is an experiment in using Generative AI to develop C code that is more complex than just 100s of LOC in a single .c file. 
+
+Currently, CGex consists of a few parts:
 
 ### LibCGex C Library
 - libcgex.h
 - libcgex.c
-### cgex CLI interface
-- cgex.c
 ### cgexd CLI and Daemon
 - cgexd.c (daemon)
 - cgexd-cli (cli for daemon)
@@ -30,12 +32,10 @@ make SANITIZE=1
 
 ## Usage:
 
-Both cgex and cgexd-cli have the same CLI interface. However, if using cgexd-cli; you must first start cgexd (as root). As well, with
-cgexd-cli you will not see any output, as the cli will only execute, while cgexd hadles actually using libcgex. But othersie, they behave 
-exactly the same in functionality.
+cgexd (daemon) must be running before using cgexd-cli tool. cgexd doesn't take any arguments, but must be run as root. Eventually, cgexd will be a systemd service, and cxegd-cli will not require root priviledges. But given it's very early in development, both programs require elevated priviledges. They communicate using unix sockets. Below are exmamples of usage:
 
 ```
-sudo ./cgex -g <cg_group> [-r <all|cg_attr> | -s <cg_attr> <cg_value> | -t <cg_type>]
+sudo ./cgexd-cli -g <cg_group> [-r <all|cg_attr> | -s <cg_attr> <cg_value> | -t <cg_type>]
 ```
 
 Some of the basics are in-place. Such as being able to query, filter and modify cgroups data in /sys/fs/cgroup, which is usfeul, as is.
@@ -43,31 +43,32 @@ For example, if I wanted to know not only the cgroup.threads (PIDs) for a specif
 with each PID (something not provided in the cgroup.threads data!), I can easily get that information:
 
 ```
-$ sudo ./cgex -g audio_rt -r cgroup.threads
-cgroup.threads:
-1857 - jackdbus
-2448 - jackdbus
-2455 - jackdbus
-2456 - jackdbus
-1825 - pipewire
-1855 - pw-data-loop
-2467 - pipewire
-2468 - pipewire
-2474 - pipewire
-1827 - pipewire-pulse
-1854 - pw-data-loop
-570 - irq/166-snd_hda_intel:card0
-200 - irq/126-xhci_hcd
+$ sudo ./cgexd-cli -g audio_rt -r cgroup.threads
+cgroup.threads: 
+1733 - jackdbus
+2326 - jackdbus
+2328 - jackdbus
+2329 - jackdbus
+1698 - pipewire
+1729 - pw-data-loop
+2335 - pipewire
+2336 - pipewire
+2347 - pipewire
+1700 - pipewire-pulse
+1727 - pw-data-loop
+550 - irq/166-snd_hda_intel:card0
+203 - irq/126-xhci_hcd
+
 ```
 
 or in another scenario, if I wanted to look at just the cpu related settings in a cgroup:
 
 ```
-$ sudo ./cgex -g audio_rt -t cpu
+$ sudo ./cgexd-cli -g audio_rt -t cpu
 cpu.weight: 8668
-cpu.stat: usage_usec 263614372
+cpu.stat: usage_usec 1112107376
 cpu.weight.nice: -20
-cpu.pressure: some avg10=0.00 avg60=0.00 avg300=0.00 total=57952388
+cpu.pressure: some avg10=0.23 avg60=0.26 avg300=0.17 total=188280932
 cpu.idle: 0
 cpu.stat.local: throttled_usec 0
 cpu.max.burst: 0
