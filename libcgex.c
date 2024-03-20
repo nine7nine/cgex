@@ -1,7 +1,14 @@
 // libcgex.c
 #include "libcgex.h"
 
-// Function to read the contents of a file
+// Function to compare strings for sorting
+int comp_str(const void *a, const void *b) {
+    const char **str1 = (const char **)a;
+    const char **str2 = (const char **)b;
+    return strcmp(*str1, *str2);
+}
+
+// Helper function to read file contents
 char *read_cg_attr(const char *file_path) {
     FILE *file = fopen(file_path, "r");
     if (file == NULL) {
@@ -29,17 +36,29 @@ char *read_cg_attr(const char *file_path) {
     return buffer;
 }
 
-// Function to compare strings for sorting
-int compare_str(const void *a, const void *b) {
-    const char **str1 = (const char **)a;
-    const char **str2 = (const char **)b;
-    return strcmp(*str1, *str2);
+// Helper function to print process information
+void ps_stat_info(int pid) {
+    // Construct the file path for the stat file of the PID
+    char pid_stat_path[BUF_SIZE];
+    snprintf(pid_stat_path, sizeof(pid_stat_path), "/proc/%d/stat", pid);
+
+    // Read the contents of the stat file
+    FILE *stat_file = fopen(pid_stat_path, "r");
+    if (stat_file != NULL) {
+        // Extract process name from stat file
+        char process_name[BUF_SIZE];
+        if (fscanf(stat_file, "%*d (%[^)])", process_name) == 1) {
+            // Print PID and process name
+            printf("\n%d - %s", pid, process_name);
+        }
+        fclose(stat_file);
+    }
 }
 
 // Function to read and print a specific setting in a CGroup
 void show_cg_attr(const char *cg_path, const char *cg_attr, const char *cg_type) {
     if (cg_path == NULL || cg_attr == NULL) {
-        fprintf(stderr, "Error: NULL input parameter(s) detected\n");
+        fprintf(stderr, "NULL input parameter(s) detected\n");
         return;
     }
 
@@ -50,7 +69,7 @@ void show_cg_attr(const char *cg_path, const char *cg_attr, const char *cg_type)
     // Open the file for reading
     FILE *file = fopen(file_path, "r");
     if (file == NULL) {
-        perror("fopen");
+        fprintf(stderr, "Failed to open file: %s\n", file_path);
         return;
     }
 
@@ -68,40 +87,22 @@ void show_cg_attr(const char *cg_path, const char *cg_attr, const char *cg_type)
 
     // If the setting is cgroup.threads, process the PIDs
     if (strcmp(cg_attr, "cgroup.threads") == 0) {
-        char *line = NULL;
-        size_t len = 0;
-        ssize_t read;
-        while ((read = getline(&line, &len, file)) != -1) {
+        char line[BUF_SIZE];
+        while (fgets(line, sizeof(line), file) != NULL) {
             // Remove trailing newline character
-            if (line[read - 1] == '\n') {
-                line[read - 1] = '\0';
+            size_t len = strlen(line);
+            if (len > 0 && line[len - 1] == '\n') {
+                line[len - 1] = '\0';
             }
 
             // Convert PID string to integer
             int pid = atoi(line);
 
-            // Construct the file path for the stat file of the PID
-            char pid_stat_path[BUF_SIZE];
-            snprintf(pid_stat_path, sizeof(pid_stat_path), "/proc/%d/stat", pid);
-
-            // Read the contents of the stat file
-            FILE *stat_file = fopen(pid_stat_path, "r");
-            if (stat_file != NULL) {
-                // Extract process name from stat file
-                char process_name[BUF_SIZE];
-                if (fscanf(stat_file, "%*d (%[^)])", process_name) == 1) {
-                    // Print PID and process name
-                    printf("\n%d - %s", pid, process_name);
-                }
-                fclose(stat_file);
-            }
-        }
-
-        if (line) {
-            free(line);
+            // Print process information
+            ps_stat_info(pid);
         }
     } else {
-        // Read the content of the setting file
+        // Read and print the content of the setting file
         char *content = read_cg_attr(file_path);
         if (content != NULL) {
             printf("%s", content);
@@ -116,7 +117,7 @@ void show_cg_attr(const char *cg_path, const char *cg_attr, const char *cg_type)
 // Function to set a value for a setting in a CGroup
 void set_cg_attr(const char *cg_path, const char *cg_attr, const char *cg_value) {
     if (cg_path == NULL || cg_attr == NULL || cg_value == NULL) {
-        fprintf(stderr, "Error: NULL input parameter(s) detected\n");
+        fprintf(stderr, "NULL input parameter(s) detected\n");
         return;
     }
 
@@ -160,7 +161,7 @@ char **get_cg_list(const char *cg_path, int *count) {
     }
     closedir(dir);
 
-    qsort(cg_attr_list, *count, sizeof(char *), compare_str);
+    qsort(cg_attr_list, *count, sizeof(char *), comp_str);
 
     return cg_attr_list;
 }
