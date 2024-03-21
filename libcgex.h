@@ -14,6 +14,12 @@
 #include <syslog.h>
 #include <dirent.h>
 
+/* libcgex.c:
+ * 
+ * Core Libcgex.c stuff
+ *
+ */ 
+
 #define BUF_SIZE 512
 #define MAX_COMMAND_LENGTH 100
 #define DAEMON_SOCKET_PATH "/var/run/cgexd_socket"
@@ -44,17 +50,39 @@ void free_cg_list(char **cg_attr_list, int count);
 // Helper function to print process information
 void ps_stat_info(int pid, char *output_buffer, size_t buffer_size);
 
+/* libcgex-utils:
+ * 
+ * Keeping some of the more simple/generic abstractions outside of libcgex.c
+ *
+ */ 
+
 // Function to compare strings for sorting
 int comp_str(const void *a, const void *b);
+// Helper function to concatenate strings safely
+void concat_str(char **dest, const char *src);
 // Function to construct file paths
 void cg_fs_path(char *file_path, size_t size, const char *cg_path, const char *cg_attr);
-// Function to handle string manipulation
-void rm_trail(char *str);
-// Function to remove the socket file if it exists
-void rm_socket();
 // Function to handle errors and exit in cgexd.c
 void cgexd_err(const char *message);
 // Function to handle errors in libcgex.c
 void libcgex_err(const char *message, char *output_buffer, size_t buffer_size);
+// Function to handle string manipulation
+void trail_rm(char *str);
+// Function to free dynamically allocated memory and return EXIT_FAILURE
+void clr_exit(char *cmd, char *response, int sockfd);
+// Function to create a Unix domain socket
+int sockt_srv_create(const char *socket_path);
+// Function to establish a connection to the daemon
+int sockt_srv_connect(const char *socket_path);
+// Function to accept a client connection
+int sockt_cli_accept(int server_fd);
+// Function to send data to a client
+void sockt_send(int client_fd, const char *data, size_t data_size);
+// Function to receive data from a client
+ssize_t sockt_recv(int client_fd, char *buffer, size_t buffer_size);
+// Function to close a socket
+void sockt_close(int fd);
+// Function to remove the socket file if it exists
+void sockt_rm();
 
 #endif

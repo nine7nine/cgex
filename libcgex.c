@@ -32,7 +32,7 @@ char *read_cg_attr(const char *file_path) {
         return NULL;
     }
 
-    rm_trail(buffer);
+    trail_rm(buffer);
 
     return buffer;
 }
@@ -84,7 +84,7 @@ void show_cg_attr(const char *cg_path, const char *cg_attr, const char *cg_type,
         
         char line[BUF_SIZE];
         while (fgets(line, sizeof(line), file) != NULL) {
-            rm_trail(line);
+            trail_rm(line);
 
             int pid = atoi(line);
 

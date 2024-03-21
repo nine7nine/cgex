@@ -1,25 +1,5 @@
 #include "libcgex.h"
 
-// Helper function to concatenate strings safely
-void concat_str(char **dest, const char *src) {
-    size_t current_len = strlen(*dest);
-    size_t src_len = strlen(src);
-    *dest = realloc(*dest, current_len + src_len + 1);
-    if (*dest == NULL) {
-        fprintf(stderr, "Error: Memory allocation failed\n");
-        exit(EXIT_FAILURE);
-    }
-    strcat(*dest, src);
-}
-
-// Function to free dynamically allocated memory and return EXIT_FAILURE
-void clr_exit(char *cmd, char *response, int sockfd) {
-    free(cmd);
-    free(response);
-    close(sockfd);
-    exit(EXIT_FAILURE);
-}
-
 int main(int argc, char *argv[]) {
     const char *cg_group = NULL;
     const char *cg_opt = NULL;
@@ -111,31 +91,19 @@ int main(int argc, char *argv[]) {
     }
 
     // Connect to the daemon
-    int sockfd = socket(AF_UNIX, SOCK_STREAM, 0);
+    int sockfd = sockt_srv_connect(DAEMON_SOCKET_PATH);
     if (sockfd < 0) {
-        fprintf(stderr, "Error: Failed to create socket\n");
-        clr_exit(cmd, response, -1);
-    }
-
-    struct sockaddr_un server_addr;
-    memset(&server_addr, 0, sizeof(server_addr));
-    server_addr.sun_family = AF_UNIX;
-    strncpy(server_addr.sun_path, DAEMON_SOCKET_PATH, sizeof(server_addr.sun_path) - 1);
-
-    if (connect(sockfd, (struct sockaddr *)&server_addr, sizeof(server_addr)) < 0) {
-        fprintf(stderr, "Error: Failed to connect to daemon\n");
-        clr_exit(cmd, response, sockfd);
+        // Handle connection error
+        exit(EXIT_FAILURE);
     }
 
     // Send command to daemon
-    if (send(sockfd, cmd, strlen(cmd), 0) < 0) {
-        fprintf(stderr, "Error: Failed to send command to daemon\n");
-        clr_exit(cmd, response, sockfd);
-    }
+    printf("Sending command to daemon: %s\n", cmd);
+    sockt_send(sockfd, cmd, strlen(cmd));
 
     // Receive and print response from daemon
     ssize_t bytes_received;
-    while ((bytes_received = recv(sockfd, response, BUF_SIZE - 1, 0)) > 0) {
+    while ((bytes_received = sockt_recv(sockfd, response, BUF_SIZE - 1)) > 0) {
         response[bytes_received] = '\0';
         printf("%s", response);
     }
@@ -145,9 +113,9 @@ int main(int argc, char *argv[]) {
         clr_exit(cmd, response, sockfd);
     }
 
-    close(sockfd);
     free(cmd);
     free(response);
+    sockt_close(sockfd);
 
     return EXIT_SUCCESS;
 }
