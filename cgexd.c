@@ -1,5 +1,11 @@
 #include "libcgex.h"
 
+// Function to handle errors and exit
+void cgexd_err(const char *message) {
+    fprintf(stderr, "Error: %s\n", message);
+    exit(EXIT_FAILURE);
+}
+
 // Function to remove the socket file if it exists
 void rm_socket() {
     if (access(DAEMON_SOCKET_PATH, F_OK) != -1) {
@@ -62,8 +68,6 @@ void parse_cmd(const char *cmd, const char **cg_group, const char **cg_opt,
         exit(EXIT_FAILURE);
     }
 }
-
-#include "libcgex.h"
 
 void ps_client_cmd(int client_fd, const char *cmd, char *output_buffer, size_t buffer_size) {
     // Parse command
@@ -163,15 +167,13 @@ int main() {
     // Create Unix domain socket for communication
     int server_fd = socket(AF_UNIX, SOCK_STREAM, 0);
     if (server_fd == -1) {
-        fprintf(stderr, "Error: Failed to create socket.\n");
-        exit(EXIT_FAILURE);
+        cgexd_err("Failed to create socket");
     }
 
     // Set SO_REUSEADDR option
     int optval = 1;
     if (setsockopt(server_fd, SOL_SOCKET, SO_REUSEADDR, &optval, sizeof(optval)) == -1) {
-        fprintf(stderr, "Error: Failed to set socket option.\n");
-        exit(EXIT_FAILURE);
+        cgexd_err("Failed to set socket option");
     }
 
     struct sockaddr_un server_addr;
@@ -180,13 +182,11 @@ int main() {
     strncpy(server_addr.sun_path, DAEMON_SOCKET_PATH, sizeof(server_addr.sun_path) - 1);
 
     if (bind(server_fd, (struct sockaddr *)&server_addr, sizeof(server_addr)) == -1) {
-        fprintf(stderr, "Error: Failed to bind socket.\n");
-        exit(EXIT_FAILURE);
+        cgexd_err("Failed to bind socket");
     }
 
     if (listen(server_fd, 1) == -1) {
-        fprintf(stderr, "Error: Failed to listen on socket.\n");
-        exit(EXIT_FAILURE);
+        cgexd_err("Failed to listen on socket");
     }
 
     // Define output_buffer variable
