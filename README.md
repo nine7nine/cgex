@@ -1,16 +1,17 @@
 # CGex (CGroups Exhibitor)
 
-CGex is asmall C library, daemon and CLI tool for use with Linux Control Groups (CGroups). Yes, there are some other tools in Systemd, libcgroup, etc. that are fantastic (and I use them), but my motivation for this project is a bit different.
+CGex is a small C library, daemon and CLI tool for use with Linux Control Groups (CGroups). Yes, there are some other tools in Systemd, libcgroup, etc. that are fantastic (and I use them), but my motivation for this project is a bit different.
 
 1. I wanted a set of cgroup management tools with less complexity than some of the alternatives.
 2. I wanted to build a small library to assist in building a daemon, CLI and GTK app for cgroups management.
-3. This is an experiment in using Generative AI to develop C code that is more complex than just 100s of LOC in a single .c file. 
+3. This is an experiment in using Generative AI to develop C code more complex than just 100s of LOC in a single .c file. 
 
 Currently, CGex consists of a few parts:
 
 ### LibCGex C Library
 - libcgex.h
 - libcgex.c
+- libcgex-utils.c
 ### cgexd CLI and Daemon
 - cgexd.c (daemon)
 - cgexd-cli (cli for daemon)
@@ -81,7 +82,7 @@ cpu.uclamp.max: max
 If i want to modify a cgroup setting's value:
 
 ```
-sudo ./cgex -g audio_rt -s cpu.latency.nice -- -20
+sudo ./cgexd-cli -g audio_rt -s cpu.latency.nice -- -20
 Updated cpu.latency.nice: -20
 ```
 
