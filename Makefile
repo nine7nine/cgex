@@ -1,10 +1,10 @@
 CC = gcc
 CFLAGS = -Wall -Wextra
-LIBCGEX_SRC = libcgex.c
+LIBCGEX_SRC = libcgex.c libcgex-utils.c
 LIBCGEX_HEADER = libcgex.h
 
 TARGETS = cgexd cgexd-cli cgex-gtk
-SRC = cgexd.c cgexd-cli.c cgex-gtk.c
+SRC = cgexd.c cgexd-cli.c cgex-gtk.c libcgex-utils.c
 OBJ = $(SRC:.c=.o)
 
 ifdef SANITIZE

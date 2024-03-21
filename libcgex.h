@@ -44,4 +44,17 @@ void free_cg_list(char **cg_attr_list, int count);
 // Helper function to print process information
 void ps_stat_info(int pid, char *output_buffer, size_t buffer_size);
 
+// Function to compare strings for sorting
+int comp_str(const void *a, const void *b);
+// Function to construct file paths
+void cg_fs_path(char *file_path, size_t size, const char *cg_path, const char *cg_attr);
+// Function to handle string manipulation
+void rm_trail(char *str);
+// Function to remove the socket file if it exists
+void rm_socket();
+// Function to handle errors and exit in cgexd.c
+void cgexd_err(const char *message);
+// Function to handle errors in libcgex.c
+void libcgex_err(const char *message, char *output_buffer, size_t buffer_size);
+
 #endif

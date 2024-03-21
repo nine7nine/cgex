@@ -1,21 +1,5 @@
 #include "libcgex.h"
 
-// Function to handle errors and exit
-void cgexd_err(const char *message) {
-    fprintf(stderr, "Error: %s\n", message);
-    exit(EXIT_FAILURE);
-}
-
-// Function to remove the socket file if it exists
-void rm_socket() {
-    if (access(DAEMON_SOCKET_PATH, F_OK) != -1) {
-        if (unlink(DAEMON_SOCKET_PATH) == -1) {
-            fprintf(stderr, "Error: Failed to remove socket file.\n");
-            exit(EXIT_FAILURE);
-        }
-    }
-}
-
 // Function to parse the command received from the client
 void parse_cmd(const char *cmd, const char **cg_group, const char **cg_opt,
                    const char **cg_attr, const char **cg_type,
@@ -62,7 +46,6 @@ void parse_cmd(const char *cmd, const char **cg_group, const char **cg_opt,
         token = strtok(NULL, " ");
     }
 
-    // If no command is specified, set the corresponding flag
     if (!(*r_flag || *s_flag || *t_flag)) {
         fprintf(stderr, ERROR_NO_COMMAND);
         exit(EXIT_FAILURE);
@@ -161,7 +144,6 @@ void ps_client_cmd(int client_fd, const char *cmd, char *output_buffer, size_t b
 
 // Main function of the daemon
 int main() {
-    // Remove socket file if it exists
     rm_socket();
 
     // Create Unix domain socket for communication
@@ -170,7 +152,6 @@ int main() {
         cgexd_err("Failed to create socket");
     }
 
-    // Set SO_REUSEADDR option
     int optval = 1;
     if (setsockopt(server_fd, SOL_SOCKET, SO_REUSEADDR, &optval, sizeof(optval)) == -1) {
         cgexd_err("Failed to set socket option");
@@ -189,7 +170,6 @@ int main() {
         cgexd_err("Failed to listen on socket");
     }
 
-    // Define output_buffer variable
     char output_buffer[BUF_SIZE];
 
     // Main daemon loop
